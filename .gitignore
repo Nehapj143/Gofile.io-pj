@@ -1,20 +1,6 @@
-# Python cache files
-__pycache__
-
-# Pyrogram session files
+**/__pycache__
 *.session
-
-# Compiled Python files
 *.pyc
-
-# Environment variables file
 *.env
-
-# Virtual environment directory
-venv/
-
-# Downloaded files directory
-downloads/
-
-# Gitignore itself (if not already present)
-.gitignore
+**/venv
+**/downloads
