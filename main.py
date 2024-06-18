@@ -10,13 +10,13 @@ load_dotenv()
 
 Bot = Client(
     "GoFile-Bot",
-    bot_token=os.getenv("BOT_TOKEN"),
-    api_id=int(os.getenv("API_ID")),
-    api_hash=os.getenv("API_HASH")
+    bot_token=os.environ.get("BOT_TOKEN"),
+    api_id=int(os.environ.get("API_ID")),
+    api_hash=os.environ.get("API_HASH")
 )
 
 INSTRUCTIONS = """
-I am a gofile uploader telegram bot.
+I am a gofile uploader telegram bot. \
 You can upload files to gofile.io with command.
 
 With media:
@@ -45,30 +45,45 @@ async def start(bot, update):
     )
 
 @Bot.on_message(filters.private & filters.command("upload"))
-async def upload(bot, update):
+async def filter(bot, update):
     message = await update.reply_text(
         text="`Processing...`",
         quote=True,
         disable_web_page_preview=True
     )
 
-    text = update.text.split(maxsplit=1)[1] if len(update.text.split()) > 1 else None
-    url = token = folderId = None
+    text = update.text.replace("\n", " ")
+    url = None
+    token = None
+    folderId = None
 
-    if text:
-        if text.startswith("http://") or text.startswith("https://"):
-            url, *params = text.split()
-            if params:
-                token = params[0] if len(params) >= 1 else None
-                folderId = params[1] if len(params) >= 2 else None
+    if " " in text:
+        text = text.split(" ", 1)[1]
+        if update.reply_to_message:
+            if " " in text:
+                token, folderId = text.split(" ", 1)
+            else:
+                token = text
         else:
-            token, folderId = text.split(maxsplit=1)
+            if " " in text:
+                if len(text.split()) > 2:
+                    url, token, folderId = text.split(" ", 2)
+                else:
+                    url, token = text.split()
+            else:
+                url = text
+            if not (url.startswith("http://") or url.startswith("https://")):
+                await message.edit_text("Error :- `url is wrong`")
+                return
+    elif not update.reply_to_message:
+        await message.edit_text("Error :- `downloadable media or url not found`")
+        return
 
     try:
         await message.edit_text("`Downloading...`")
         if url:
             response = requests.get(url)
-            media = response.url.split("/")[-1]
+            media = response.url.split("/", -1)[-1]
             with open(media, "wb") as file:
                 file.write(response.content)
         else:
@@ -77,39 +92,38 @@ async def upload(bot, update):
 
         await message.edit_text("`Uploading...`")
         response = uploadFile(file=media, token=token, folderId=folderId)
-        await message.edit_text("`Uploaded Successfully`")
+        await message.edit_text("`Uploading Successfully`")
 
         try:
             os.remove(media)
-        except Exception as e:
-            print(f"Failed to delete {media}: {e}")
+        except Exception as error:
+            print(error)
+    except Exception as error:
+        await message.edit_text(f"Error :- `{error}`")
+        return
 
-        text = f"**File Name:** `{response['fileName']}`\n"
-        text += f"**File ID:** `{response['fileId']}`\n"
-        text += f"**Code:** `{response['code']}`\n"
-        text += f"**md5:** `{response['md5']}`\n"
-        text += f"**Download Page:** `{response['downloadPage']}`"
-
-        link = response['downloadPage']
-        reply_markup = InlineKeyboardMarkup(
+    text = f"**File Name:** `{response['fileName']}`" + "\n"
+    text += f"**File ID:** `{response['fileId']}`" + "\n"
+    text += f"**Code:** `{response['code']}`" + "\n"
+    text += f"**md5:** `{response['md5']}`" + "\n"
+    text += f"**Download Page:** `{response['downloadPage']}`"
+    link = response['downloadPage']
+    reply_markup = InlineKeyboardMarkup(
+        [
             [
-                [
-                    InlineKeyboardButton(text="Open Link", url=link),
-                    InlineKeyboardButton(text="Share Link", url=f"https://telegram.me/share/url?url={link}")
-                ],
-                [
-                    InlineKeyboardButton(text="Feedback", url="https://telegram.me/FayasNoushad")
-                ]
+                InlineKeyboardButton(text="Open Link", url=link),
+                InlineKeyboardButton(text="Share Link", url=f"https://telegram.me/share/url?url={link}")
+            ],
+            [
+                InlineKeyboardButton(text="Feedback", url="https://telegram.me/FayasNoushad")
             ]
-        )
-        await message.edit_text(
-            text=text,
-            reply_markup=reply_markup,
-            disable_web_page_preview=True
-        )
-
-    except Exception as e:
-        await message.edit_text(f"Error: {e}")
+        ]
+    )
+    await message.edit_text(
+        text=text,
+        reply_markup=reply_markup,
+        disable_web_page_preview=True
+    )
 
 app = Flask(__name__)
 
@@ -119,6 +133,7 @@ def home():
 
 if __name__ == "__main__":
     Bot.start()
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     Bot.idle()
     Bot.stop()
+    
