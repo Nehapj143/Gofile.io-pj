@@ -3,7 +3,7 @@ services:
     name: gofile-uploader-bot
     env: python
     plan: free
-    buildCommand: ""
+    buildCommand: "pip install --upgrade pip"
     startCommand: "python main.py"
     envVars:
       - key: PYTHON_VERSION
