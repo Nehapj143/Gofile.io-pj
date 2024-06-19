@@ -10,3 +10,14 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.10.5"
+  - type: web
+    name: gofile-uploader-bot-flask
+    env: python
+    plan: free
+    buildCommand: |
+      python -m pip install --upgrade pip
+      python -m pip install -r requirements.txt
+    startCommand: "python main.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.10.5"
